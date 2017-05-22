@@ -6,62 +6,100 @@
 
 namespace dbg
 {
-    safeout::safeout() : m_pos(&std::cout), m_outData()
+    safeout::safeout() : m_pos(&std::cout), m_outData(), m_defMsgLevel(DBG_DEBUG)
     {
-        pthread_mutexattr_t attr;
-        (void)pthread_mutexattr_init(&attr);
-        (void)pthread_mutexattr_setrobust(&attr, PTHREAD_MUTEX_ROBUST);
-        (void)pthread_mutexattr_setprotocol(&attr, PTHREAD_PRIO_INHERIT);
-#ifdef DBG_LOG_MULTUPROCESS
-        (void)pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
-#else
-        (void)pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_PRIVATE);
-#endif
-        (void)pthread_mutex_init(&m_protector, &attr);
-        (void)pthread_mutexattr_destroy(&attr);
+        protectorInit();
     }
 
     safeout::~safeout()
     {
-        if(pthread_mutex_lock(&m_protector) == EOWNERDEAD)
-        {
-            pthread_mutex_consistent(&m_protector);
-        }
-        for(std::map<pthread_t, std::string>::iterator it
+        protectorLock();
+        for(std::map<pthread_t, outData_t>::iterator it
                                                    = m_outData.begin(); it != m_outData.end(); ++it)
         {
-            *m_pos << it->second << std::endl;
+            if(it->second.outStr !=  "")
+            {
+                *m_pos << it->second.outStr << std::endl;
+            }
         }
-        (void)pthread_mutex_unlock(&m_protector);
-        (void)pthread_mutex_destroy(&m_protector);
+        protectorUnlock();
+        protectorDestroy();
     }
 
     void safeout::redirect(std::ostream &os)
     {
-        if(pthread_mutex_lock(&m_protector) == EOWNERDEAD)
-        {
-            pthread_mutex_consistent(&m_protector);
-        }
+        protectorLock();
         m_pos = &os;
-        (void)pthread_mutex_unlock(&m_protector);
+        protectorUnlock();
     }
 
-    safeout& safeout::endline(safeout& so)
+    safeout& safeout::flush(safeout& so, dbgLevel_t msglev)
     {
         pthread_t thr = pthread_self();
-        if(pthread_mutex_lock(&so.m_protector) == EOWNERDEAD)
+        so.protectorLock();
+        if (so.m_outData.find(thr) != so.m_outData.end())
         {
-            pthread_mutex_consistent(&so.m_protector);
+            if(so.m_outData[thr].outStr != "")
+            {
+                *so.m_pos << so.m_outData[thr].outStr << std::endl;
+                so.m_outData[thr].outStr = "";
+            }
         }
-        *so.m_pos << so.m_outData[thr] << std::endl;
-        so.m_outData[thr] = "";
-        (void)pthread_mutex_unlock(&so.m_protector);
+        else
+        {
+            so.m_outData[thr].outStr = "";
+            so.m_outData[thr].dbgLev = DBG_DEBUG;
+        }
+        so.m_outData[thr].msgLev = msglev;
+        so.protectorUnlock();
         return so;
     }
 
     safeout & safeout::operator<< (safeout & (*_f)(safeout &))
     {
         return(*_f)(*this);
+    }
+
+    void safeout::setDbgLevel(dbgLevel_t level)
+    {
+        pthread_t thr = pthread_self();
+        protectorLock();
+        if (m_outData.find(thr) == m_outData.end())
+        {
+            m_outData[thr].outStr = "";
+            m_outData[thr].msgLev = m_defMsgLevel;
+        }
+        m_outData[thr].dbgLev = level;
+        protectorUnlock();
+    }
+
+    void safeout::setDefaultMsgLevel(dbgLevel_t level)
+    {
+        protectorLock();
+        m_defMsgLevel = level;
+        protectorUnlock();
+    }
+
+    dbgLevel_t safeout::getDefaultMsgLevel()
+    {
+        dbgLevel_t result = DBG_NOTSET;
+        protectorLock();
+        result = m_defMsgLevel;
+        protectorUnlock();
+        return result;
+    }
+
+    dbgLevel_t safeout::getCurrentMsgLevel()
+    {
+        dbgLevel_t result = DBG_NOTSET;
+        pthread_t thr = pthread_self();
+        protectorLock();
+        if (m_outData.find(thr) != m_outData.end())
+        {
+            result = m_outData[thr].msgLev;
+        }
+        protectorUnlock();
+        return result;
     }
 
     std::string safeout::time()
@@ -82,16 +120,95 @@ namespace dbg
         return ss.str();
     }
 
-    safeout sout;
-
-    safeout& endl(safeout& so)
+    void safeout::protectorInit()
     {
-        return so.endline(so);
+        pthread_mutexattr_t attr;
+        (void)pthread_mutexattr_init(&attr);
+        (void)pthread_mutexattr_setrobust(&attr, PTHREAD_MUTEX_ROBUST);
+        (void)pthread_mutexattr_setprotocol(&attr, PTHREAD_PRIO_INHERIT);
+#ifdef DBG_LOG_MULTUPROCESS
+        (void)pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
+#else
+        (void)pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_PRIVATE);
+#endif
+        (void)pthread_mutex_init(&m_protector, &attr);
+        (void)pthread_mutexattr_destroy(&attr);
     }
+
+    void safeout::protectorDestroy()
+    {
+        (void)pthread_mutex_destroy(&m_protector);
+    }
+
+    void safeout::protectorLock()
+    {
+        if(pthread_mutex_lock(&m_protector) == EOWNERDEAD)
+        {
+            pthread_mutex_consistent(&m_protector);
+        }
+    }
+
+    void safeout::protectorUnlock()
+    {
+        (void)pthread_mutex_unlock(&m_protector);
+    }
+
+    safeout sout;
 
     void redirect(std::ostream &os)
     {
         sout.redirect(os);
+    }
+
+    void dbgLevel(dbgLevel_t dbgLevel)
+    {
+        sout.setDbgLevel(dbgLevel);
+    }
+
+    void defaultMsgLevel(dbgLevel_t msgLevel)
+    {
+        sout.setDefaultMsgLevel(msgLevel);
+    }
+
+    safeout& endl(safeout& so)
+    {
+        return so.flush(so, so.getDefaultMsgLevel());
+    }
+
+    safeout& info(safeout& so)
+    {
+        if(so.getCurrentMsgLevel() != DBG_INFO)
+        {
+            (void)so.flush(so, DBG_INFO);
+        }
+        return so;
+    }
+
+    safeout& dbg(safeout& so)
+    {
+        if(so.getCurrentMsgLevel() != DBG_DEBUG)
+        {
+            (void)so.flush(so, DBG_DEBUG);
+        }
+        return so;
+    }
+
+    safeout& warn(safeout& so)
+    {
+        if(so.getCurrentMsgLevel() != DBG_WARNING)
+        {
+            (void)so.flush(so, DBG_WARNING);
+        }
+        return so;
+    }
+
+    safeout& err(safeout& so)
+    {
+        if(so.getCurrentMsgLevel() != DBG_ERROR)
+        {
+            (void)so.flush(so, DBG_ERROR);
+        }
+        return so;
     }
 
 }
