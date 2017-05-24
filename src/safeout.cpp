@@ -4,9 +4,12 @@
 #include <time.h>
 #include <iomanip>
 
-namespace dbg
+
+namespace dbg   //! Tracer name space.
 {
-    safeout::safeout() : m_pos(&std::cout), m_outData(), m_defMsgLevel(DBG_DEBUG)
+    safeout::safeout() : m_pos(&std::cout),
+                         m_outData(),
+                         m_defMsgLevel(DBG_DEBUG)
     {
         protectorInit();
     }
@@ -15,7 +18,7 @@ namespace dbg
     {
         protectorLock();
         for(std::map<pthread_t, outData_t>::iterator it
-                                                   = m_outData.begin(); it != m_outData.end(); ++it)
+                               = m_outData.begin(); it != m_outData.end(); ++it)
         {
             if(it->second.outStr !=  "")
             {
@@ -26,6 +29,10 @@ namespace dbg
         protectorDestroy();
     }
 
+    /**
+     * Redirect tracer output, std::cout by default.
+     * @param os - output stream for tracing output
+     */
     void safeout::redirect(std::ostream &os)
     {
         protectorLock();
@@ -60,6 +67,10 @@ namespace dbg
         return(*_f)(*this);
     }
 
+    /**
+     * Set tracing detailing for caller thread, by default Debug.
+     * @param level - minimal  output traces level
+     */
     void safeout::setDbgLevel(dbgLevel_t level)
     {
         pthread_t thr = pthread_self();
@@ -73,6 +84,12 @@ namespace dbg
         protectorUnlock();
     }
 
+    /**
+     * Set default message tracing level after endl without applying
+     * manipulators. Applied for all threads, flush all threads which have
+     * different tracing level in time of call.
+     * @param level - message tracing level
+     */
     void safeout::setDefaultMsgLevel(dbgLevel_t level)
     {
         if(level < DBG_NOTSET)
@@ -80,7 +97,7 @@ namespace dbg
             protectorLock();
             m_defMsgLevel = level;
             for(std::map<pthread_t, outData_t>::iterator it
-                                                   = m_outData.begin(); it != m_outData.end(); ++it)
+                               = m_outData.begin(); it != m_outData.end(); ++it)
             {
                 if(it->second.msgLev != m_defMsgLevel)
                 {
@@ -96,6 +113,10 @@ namespace dbg
         }
     }
 
+    /**
+     * Get default message tracing level after endl without next manipulator.
+     * @return message tracing level, same for all threads
+     */
     dbgLevel_t safeout::getDefaultMsgLevel()
     {
         dbgLevel_t result = DBG_NOTSET;
@@ -105,6 +126,10 @@ namespace dbg
         return result;
     }
 
+    /**
+     * Get current message tracing level for caller thread.
+     * @return message tracing level
+     */
     dbgLevel_t safeout::getCurrentMsgLevel()
     {
         dbgLevel_t result = DBG_NOTSET;
@@ -169,13 +194,30 @@ namespace dbg
         (void)pthread_mutex_unlock(&m_protector);
     }
 
+    /**
+     * Tracing stream
+     */
     safeout sout;
 
+    /**
+     * End of line manipulator. Flush buffered data for caller thread.
+     * After operation tracing message level is set to default for
+     * caller thread.
+     * @param so - tracer class reference
+     * @return tracer class reference
+     */
     safeout& endl(safeout& so)
     {
         return so.flush(so, so.getDefaultMsgLevel());
     }
 
+    /**
+     * Information message manipulator. Flush buffered data for caller thread
+     * in case if new message tracing level is set. Makes effect only for
+     * caller thread.
+     * @param so - tracer class reference
+     * @return tracer class reference
+     */
     safeout& info(safeout& so)
     {
         if(so.getCurrentMsgLevel() != DBG_INFO)
@@ -185,6 +227,13 @@ namespace dbg
         return so;
     }
 
+    /**
+     * Debug message manipulator. Flush buffered data for caller thread
+     * in case if new message tracing level is set. Makes effect only for
+     * caller thread.
+     * @param so - tracer class reference
+     * @return tracer class reference
+     */
     safeout& dbg(safeout& so)
     {
         if(so.getCurrentMsgLevel() != DBG_DEBUG)
@@ -194,6 +243,13 @@ namespace dbg
         return so;
     }
 
+    /**
+     * Warning message manipulator.  Flush buffered data for caller thread
+     * in case if new message tracing level is set. Makes effect only for
+     * caller thread.
+     * @param so - tracer class reference
+     * @return tracer class reference
+     */
     safeout& warn(safeout& so)
     {
         if(so.getCurrentMsgLevel() != DBG_WARNING)
@@ -203,6 +259,13 @@ namespace dbg
         return so;
     }
 
+    /**
+     * Error message manipulator.  Flush buffered data for caller thread
+     * in case if new message tracing level is set. Makes effect only for
+     * caller thread.
+     * @param so - tracer class reference
+     * @return tracer class reference
+     */
     safeout& err(safeout& so)
     {
         if(so.getCurrentMsgLevel() != DBG_ERROR)

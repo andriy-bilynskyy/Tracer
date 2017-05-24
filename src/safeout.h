@@ -18,26 +18,41 @@
 #define __DBG_LOG_S__(x) __DBG_LOG_S_(x)
 #define __S__LINE__ __DBG_LOG_S__(__LINE__)
 
+/**
+ * Current source location string.
+ */
 #define __DBG_LOCATION__  "{" + (std::string(__FUNCTION__) + " " + std::string(__FILE__)\
                            + ":L" + std::string(__S__LINE__)) + "}"
 
 namespace dbg
 {
+    /**
+     * Tracing levels.
+     */
     typedef enum dbgLevel
     {
-        DBG_INFO,
-        DBG_DEBUG,
-        DBG_WARNING,
-        DBG_ERROR,
-        DBG_NOTSET
+        DBG_INFO,   //!< Information messages
+        DBG_DEBUG,  //!< Debug messages
+        DBG_WARNING,//!< Warning messages
+        DBG_ERROR,  //!< Error messages
+        DBG_NOTSET  //!< No tracing
     }dbgLevel_t;
 
+    /**
+     * Tracer class.
+     */
     class safeout
     {
     public:
         safeout();
         ~safeout();
         void redirect(std::ostream &os);
+        /**
+         * Data output operator.
+         * @param so - tracer class reference
+         * @param t - data to output
+         * @return tracer class reference
+         */
         template<class T>
         friend safeout& operator <<(safeout& so, T t)
         {
