@@ -60,7 +60,9 @@ TEST_F(CDBGtest, Timestamp)
               << std::setw(2) << ti->tm_min << ':'
               << std::setw(2) << ti->tm_sec << ':'
               << std::setw(3) << tv.tv_usec/1000;
-    ASSERT_STRCASEEQ((tp.date() + ' ' + tp.time()).c_str(), timeStamp.str().c_str());
+    std::string retTimestamp = tp.date() + ' ' + tp.time();
+    ASSERT_STRCASEEQ(retTimestamp.substr(0, retTimestamp.length() -1).c_str(),
+                     timeStamp.str().substr(0, timeStamp.str().length() -1).c_str());
     ASSERT_FALSE(tp.process());
 }
 
