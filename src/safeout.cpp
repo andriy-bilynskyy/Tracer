@@ -75,9 +75,25 @@ namespace dbg
 
     void safeout::setDefaultMsgLevel(dbgLevel_t level)
     {
-        protectorLock();
-        m_defMsgLevel = level;
-        protectorUnlock();
+        if(level < DBG_NOTSET)
+        {
+            protectorLock();
+            m_defMsgLevel = level;
+            for(std::map<pthread_t, outData_t>::iterator it
+                                                   = m_outData.begin(); it != m_outData.end(); ++it)
+            {
+                if(it->second.msgLev != m_defMsgLevel)
+                {
+                    if(it->second.outStr != "")
+                    {
+                        *m_pos << it->second.outStr << std::endl;
+                        it->second.outStr = "";
+                    }
+                    it->second.msgLev = m_defMsgLevel;
+                }
+            }
+            protectorUnlock();
+        }
     }
 
     dbgLevel_t safeout::getDefaultMsgLevel()
@@ -154,21 +170,6 @@ namespace dbg
     }
 
     safeout sout;
-
-    void redirect(std::ostream &os)
-    {
-        sout.redirect(os);
-    }
-
-    void dbgLevel(dbgLevel_t dbgLevel)
-    {
-        sout.setDbgLevel(dbgLevel);
-    }
-
-    void defaultMsgLevel(dbgLevel_t msgLevel)
-    {
-        sout.setDefaultMsgLevel(msgLevel);
-    }
 
     safeout& endl(safeout& so)
     {

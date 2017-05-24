@@ -18,8 +18,8 @@
 #define __DBG_LOG_S__(x) __DBG_LOG_S_(x)
 #define __S__LINE__ __DBG_LOG_S__(__LINE__)
 
-#define __DBG_LOCATION__  (std::string(__FUNCTION__) + " " + std::string(__FILE__)\
-                           + ":L" + std::string(__S__LINE__))
+#define __DBG_LOCATION__  "{" + (std::string(__FUNCTION__) + " " + std::string(__FILE__)\
+                           + ":L" + std::string(__S__LINE__)) + "}"
 
 namespace dbg
 {
@@ -59,19 +59,19 @@ namespace dbg
                     switch(so.m_outData[thr].msgLev)
                     {
                     case DBG_INFO:
-                        so.m_outData[thr].outStr += " [INFO ] [";
+                        so.m_outData[thr].outStr += " [INFO_] [";
                         break;
                     case DBG_DEBUG:
                         so.m_outData[thr].outStr += " [DEBUG] [";
                         break;
                     case DBG_WARNING:
-                        so.m_outData[thr].outStr += " [WARN ] [";
+                        so.m_outData[thr].outStr += " [WARN_] [";
                         break;
                     case DBG_ERROR:
                         so.m_outData[thr].outStr += " [ERROR] [";
                         break;
                     default:
-                        so.m_outData[thr].outStr += " [???  ] [";
+                        so.m_outData[thr].outStr += " [???__] [";
                         break;
                     }
                     char name[32] = {0};
@@ -79,7 +79,7 @@ namespace dbg
                     {
                         name[0] = '\0';
                     }
-                    so.m_outData[thr].outStr += std::string(name) + "] : ";
+                    so.m_outData[thr].outStr += std::string(name) + "] ";
                 }
                 so.m_outData[thr].outStr += ss.str();
             }
@@ -113,9 +113,7 @@ namespace dbg
     };
 
     extern safeout sout;
-    void redirect(std::ostream &os);
-    void dbgLevel(dbgLevel_t dbgLevel);
-    void defaultMsgLevel(dbgLevel_t msgLevel);
+
     safeout& endl(safeout& so);
     safeout& info(safeout& so);
     safeout& dbg(safeout& so);
