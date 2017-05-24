@@ -1,13 +1,13 @@
 #include "TraceParser.h"
 #include <ctype.h>
 
-TraceParser::TraceParser(std::istream &stream) : m_is(stream)
+TraceParser::TraceParser(std::istream &stream) : m_is(stream),
+                                                 m_date(),
+                                                 m_time(),
+                                                 m_level(),
+                                                 m_thread(""),
+                                                 m_message("")
 {
-    m_date = "";
-    m_time = "";
-    m_level = "";
-    m_thread = "";
-    m_message = "";
 }
 
 bool TraceParser::process()

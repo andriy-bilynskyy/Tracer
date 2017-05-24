@@ -7,7 +7,7 @@
 class TraceParser
 {
 public:
-    TraceParser(std::istream &stream);
+    explicit TraceParser(std::istream &stream);
     bool process();
     std::string date() const {return m_date;}
     std::string time() const {return m_time;}
