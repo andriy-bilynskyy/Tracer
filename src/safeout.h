@@ -125,6 +125,8 @@ namespace dbg
         void protectorDestroy();
         void protectorLock();
         void protectorUnlock();
+        safeout & operator=(const safeout &);
+        safeout(const safeout &);
     };
 
     extern safeout sout;

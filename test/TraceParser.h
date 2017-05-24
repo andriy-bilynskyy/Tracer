@@ -27,6 +27,8 @@ private:
     static bool isTime(std::string time);
     static bool isLevel(std::string level);
     static bool isThread(std::string thread);
+    TraceParser & operator=(const TraceParser &);
+    TraceParser(const TraceParser &);
 
 };
 
